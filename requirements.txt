@@ -1,0 +1,7 @@
+pandas
+scipy
+
+# For test
+mypy
+coverage
+flake8
