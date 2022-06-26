@@ -12,12 +12,22 @@ from scipy import optimize
 
 
 FilePath = str | os.PathLike[str]
+
 DEFAULT_HEADER = bytes.fromhex(
     "49 4d cd 01 80 02 e0 01 00 00 00 00 02 00 00 00"
     "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
     "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
     "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
 )
+DEFAULT_METADATA = [
+    "HiPic,1.0,100,1.0,0,0,4,8,0,0,0,01-01-1970,00:00:00,"
+    "0,0,0,0,0, , , , ,0,0,0,0,0, , ,0,, , , ,0,0,, ,0,0,0,0,0,0,0,0,0,0,2,"
+    "1,nm,*0614925,2,1,ns,*0619021,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0.0,0,0,"
+    "StopCondition:PhotonCounting, Frame=10000, Time=300.0[sec], CountingRate=0.10[%]\n",
+    "Streak:Time=10 ns, Mode=Operate, Shutter=0, MCPGain=10, MCPSwitch=1,\n",
+    "Spectrograph:Wavelength=490.000[nm], Grating=2 : 150g/mm, SlitWidthIn=100[um], Mode=Spectrograph\n",
+    "Date:1970/01/01,00:00:00\n"
+]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -26,7 +36,7 @@ class Data:
     wavelength: npt.NDArray[np.float32]
     time: npt.NDArray[np.float32]
     header: bytes = DEFAULT_HEADER
-    metadata: list[str] = dataclasses.field(default_factory=list)
+    metadata: list[str] = dataclasses.field(default_factory=lambda: DEFAULT_METADATA.copy())
 
     @classmethod
     def from_raw_file(cls, filepath_or_buffer: FilePath | io.BufferedIOBase) -> "Data":
