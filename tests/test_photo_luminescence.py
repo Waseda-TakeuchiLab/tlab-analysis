@@ -1,5 +1,6 @@
 # Copyright (c) 2022 Shuhei Nitta. All rights reserved.
 from unittest import TestCase
+import doctest
 import io
 import os
 import tempfile
@@ -274,3 +275,8 @@ class TestWavelengthResolved_property(TestCase):
             df["time"] -= time_offset
             with self.subTest(wr=wr):
                 pdt.assert_frame_equal(wr.df, df)
+
+
+def load_tests(loader, tests, _):  # type: ignore
+    tests.addTests(doctest.DocTestSuite(pl))
+    return tests
