@@ -1,5 +1,5 @@
 # Copyright (c) 2022 Shuhei Nitta. All rights reserved.
-from unittest import TestCase
+from unittest import TestCase, mock
 import doctest
 import io
 import os
@@ -130,12 +130,13 @@ class TestData_wavelength_resolved(TestCase):
         self,
         wavelength_range: tuple[float, float] | None = None,
         time_offset: t.Literal["auto"] | float = "auto",
+        intensity_offset: t.Literal["auto"] | float = "auto",
     ) -> None:
         wr = self.data.wavelength_resolved(wavelength_range, time_offset)
         if wavelength_range is None:
             wavelength = self.data.wavelength
             wavelength_range = wavelength.min(), wavelength.max()
-        self.assertEqual(wr, pl.WavelengthResolved(self.data, wavelength_range, time_offset))
+        self.assertEqual(wr, pl.WavelengthResolved(self.data, wavelength_range, time_offset, intensity_offset))
 
     def test_wavelength_range(self) -> None:
         wavelength = self.data.wavelength
@@ -153,6 +154,12 @@ class TestData_wavelength_resolved(TestCase):
         for time_offset in time_offsets:
             with self.subTest(time_offset=time_offset):
                 self._test(time_offset=time_offset)
+
+    def intensity_time_offset(self) -> None:
+        intensity_offsets: list[t.Literal["auto"] | float] = ["auto", 0.0, 3.0]
+        for intensity_offset in intensity_offsets:
+            with self.subTest(intensity_offset=intensity_offset):
+                self._test(intensity_offset=intensity_offset)
 
 
 class TestData_to_raw_binary(TestCase):
@@ -248,33 +255,31 @@ class TestWavelengthResolved_property(TestCase):
 
     def setUp(self) -> None:
         self.wrs = [
-            pl.WavelengthResolved(get_data(), (0.0, 5.0)),
-            pl.WavelengthResolved(get_data(), (-1.0, 1.0)),
-            pl.WavelengthResolved(get_data(), (0.0, 5.0), 0.0),
-            pl.WavelengthResolved(get_data(), (0.0, 5.0), 5.0)
+            pl.WavelengthResolved(get_data(), (435.0, 535.0)),
+            pl.WavelengthResolved(get_data(), (425.0, 535.0)),
+            pl.WavelengthResolved(get_data(), (445.0, 535.0)),
+            pl.WavelengthResolved(get_data(), (435.0, 525.0)),
+            pl.WavelengthResolved(get_data(), (435.0, 545.0)),
+            pl.WavelengthResolved(get_data(), (435.0, 535.0), time_offset=0.0),
+            pl.WavelengthResolved(get_data(), (435.0, 535.0), intensity_offset=0.0),
+            pl.WavelengthResolved(get_data(), (435.0, 535.0), time_offset=0.0, intensity_offset=0.0),
         ]
 
-    def test_df(self) -> None:
+    @mock.patch("tlab_analysis.util.find_start_point", return_value=(0.0, 0.0))
+    def test_df(self, find_start_point_mock: mock.Mock) -> None:
         for wr in self.wrs:
             df = wr.data.df[wr.data.df["wavelength"].between(*wr.range)] \
                 .groupby("time") \
                 .sum() \
                 .drop("wavelength", axis=1) \
                 .reset_index()
-            if wr.time_offset == "auto":
-                intensity = df["intensity"]
-                window, k = 10, 2
-                rolling = intensity.rolling(window)
-                time_offset = float(
-                    df["time"][
-                        (intensity > rolling.mean() + k * rolling.std()).shift(-1, fill_value=False)
-                    ].min()
-                )
-            else:
-                time_offset = wr.time_offset
-            df["time"] -= time_offset
+            start_point = find_start_point_mock.return_value
+            df["time"] -= start_point[0] if wr.time_offset == "auto" else wr.time_offset
+            df["intensity"] -= start_point[1] if wr.intensity_offset == "auto" else wr.intensity_offset
             with self.subTest(wr=wr):
+                find_start_point_mock.reset_mock()
                 pdt.assert_frame_equal(wr.df, df)
+                find_start_point_mock.assert_called_once()
 
 
 def load_tests(loader, tests, _):  # type: ignore

@@ -10,7 +10,7 @@ import numpy.typing as npt
 import pandas as pd
 from scipy import optimize
 
-from tlab_analysis import abstract
+from tlab_analysis import abstract, util
 
 
 FilePath = str | os.PathLike[str]
@@ -183,6 +183,7 @@ class Data(abstract.AbstractData):
         self,
         wavelength_range: tuple[float, float] | None = None,
         time_offset: t.Literal["auto"] | float = "auto",
+        intensity_offset: t.Literal["auto"] | float = "auto",
     ) -> "WavelengthResolved[Data]":
         """Resolve data along the wavelength axis.
 
@@ -193,6 +194,8 @@ class Data(abstract.AbstractData):
             If None, the whole wavelength of data is used.
         time_offset : "auto" | float
             An offset value of time.
+        intensity_offset : "auto" | float
+            An offset value of intensity.
 
         Returns
         -------
@@ -203,7 +206,7 @@ class Data(abstract.AbstractData):
         assert "intensity" in self.df.columns
         if wavelength_range is None:
             wavelength_range = self.wavelength.min(), self.wavelength.max()
-        return WavelengthResolved(self, wavelength_range, time_offset)
+        return WavelengthResolved(self, wavelength_range, time_offset, intensity_offset)
 
     def to_raw_binary(self) -> bytes:
         """Convert to a raw binary that u8167 can operate.
@@ -321,6 +324,8 @@ class WavelengthResolved(t.Generic[DT]):
     """A range of wavelength for resolution."""
     time_offset: t.Literal["auto"] | float = "auto"
     """An offset value of time."""
+    intensity_offset: t.Literal["auto"] | float = "auto"
+    """An offset value of intensity."""
 
     @functools.cached_property
     def df(self) -> pd.DataFrame:
@@ -341,18 +346,9 @@ class WavelengthResolved(t.Generic[DT]):
             .sum() \
             .drop("wavelength", axis=1) \
             .reset_index()
-        if self.time_offset == "auto":
-            intensity = df["intensity"]
-            window, k = 10, 2
-            rolling = intensity.rolling(window)
-            time_offset = float(
-                df["time"][
-                    (intensity > rolling.mean() + k * rolling.std()).shift(-1, fill_value=False)
-                ].min()
-            )
-        else:
-            time_offset = self.time_offset
-        df["time"] -= time_offset
+        start_point = util.find_start_point(df["time"], df["intensity"])
+        df["time"] -= start_point[0] if self.time_offset == "auto" else self.time_offset
+        df["intensity"] -= start_point[1] if self.intensity_offset == "auto" else self.intensity_offset
         return df
 
     def fit(
