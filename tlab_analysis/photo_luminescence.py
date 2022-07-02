@@ -355,6 +355,7 @@ class WavelengthResolved(t.Generic[DT]):
         self,
         func: t.Callable[[t.Any], t.Any],
         fitting_range: tuple[float, float] | None = None,
+        **kwargs: t.Any
     ) -> tuple[t.Any, t.Any]:  # pragma: no cover
         """Fit a non-linear function to a intensity-time curve.
 
@@ -365,6 +366,8 @@ class WavelengthResolved(t.Generic[DT]):
         fitting_range : tuple[float, float] | None
             A range of time to fit.
             If None, it is determined automatically.
+        **kwargs : Any
+            Additional keyword arguments of `scipy.optimize.curve_fit`.
 
         Returns
         -------
@@ -386,8 +389,12 @@ class WavelengthResolved(t.Generic[DT]):
         df = self.df
         index = df.index[df["time"].between(*fitting_range)]
         max_intensity = df["intensity"].max()
-        smoothed = df["intensity"].rolling(5, center=True).mean() / max_intensity
-        params, cov = optimize.curve_fit(func, df["time"][index], smoothed[index])
+        params, cov = optimize.curve_fit(
+            f=func,
+            xdata=df["time"][index],
+            ydata=df["intensity"][index] / max_intensity,
+            **kwargs
+        )
         df["fit"] = np.nan
         df.loc[index, "fit"] = func(df["time"][index], *params) * max_intensity
         return params, cov
@@ -396,10 +403,10 @@ class WavelengthResolved(t.Generic[DT]):
         assert "intensity" in self.df.columns
         assert "time" in self.df.columns
         df = self.df
-        left = df["time"][df["intensity"].shift(1).argmax()]
-        noise = df["intensity"][df["time"] < 0]
+        left = df["time"][df["intensity"].shift(2).argmax()]
+        alpha = 0.10
         right = df["time"][
             (df.index > df["intensity"].argmax())
-            & (df["intensity"] < noise.mean() + 2*noise.std())
-        ].iloc[0]
+            & df["intensity"].ge(alpha * df["intensity"].max())
+        ].max()
         return float(left), float(right)
