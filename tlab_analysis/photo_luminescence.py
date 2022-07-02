@@ -295,7 +295,7 @@ class TimeResolved(t.Generic[DT]):
         left, right = self.half_range
         return abs(right - left)
 
-    def smoothed_intensity(self, window: int = 5) -> pd.Series:
+    def smoothed_intensity(self, window: int = 3) -> pd.Series:
         """Return a smoothed intensity by mean filtering.
 
         Parameters
