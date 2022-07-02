@@ -57,7 +57,7 @@ class Data(abstract.AbstractData):
     ...     dtype=np.float32
     ... )
 
-    Create a intensity array.
+    Create an intensity array.
     >>> intensity = np.random.randint(
     ...     0, 32, time_resolution * wavelength_resolution
     ... ).astype(np.float32)
@@ -126,7 +126,7 @@ class Data(abstract.AbstractData):
 
     @functools.cached_property
     def streak_image(self) -> npt.NDArray[np.float32]:
-        """An 2D array of a streak image."""
+        """A 2D array of a streak image."""
         img_size = len(self.wavelength) * len(self.time)
         intensity = np.zeros(img_size, dtype=np.float32)
         s = min(img_size, len(self.intensity))
@@ -192,7 +192,7 @@ class Data(abstract.AbstractData):
             A range of wavelength for resolution.
             If None, the whole wavelength of data is used.
         time_offset : "auto" | float
-            A offset value of time.
+            An offset value of time.
 
         Returns
         -------
@@ -277,7 +277,7 @@ class TimeResolved(t.Generic[DT]):
 
     @property
     def half_range(self) -> tuple[float, float]:
-        """The two wavelength at which the intensity is half maximum."""
+        """The two wavelengths at which the intensity is half maximum."""
         assert "wavelength" in self.df.columns
         intensity = self.smoothed_intensity()
         wavelength = self.df["wavelength"]
@@ -306,7 +306,7 @@ class TimeResolved(t.Generic[DT]):
         Returns
         -------
         pandas.Series
-            A Series object of smoothed intensity.
+            A Series object of the smoothed intensity.
         """
         assert "intensity" in self.df.columns
         return self.df["intensity"].rolling(window, center=True).mean()
@@ -375,7 +375,7 @@ class WavelengthResolved(t.Generic[DT]):
         params : numpy.array
             Optimal values for the parameters
             so that the sum of the squared residuals of
-            func(xdata, *popt) - ydata is minimized.
+            func(time, *params) - intensity is minimized.
         cov : 2D numpy.array
             The estimated covariance of params.
 
