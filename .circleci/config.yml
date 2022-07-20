@@ -13,6 +13,9 @@ jobs:
       - python/install-packages:
           pkg-manager: pip
       - run:
+          name: Run flake8
+          command: flake8 .
+      - run:
           name: Run mypy
           command: mypy .
       - run:

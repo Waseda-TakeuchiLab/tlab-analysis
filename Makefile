@@ -1,4 +1,7 @@
-test: mypy unittest
+test: flake8 mypy unittest
+
+flake8:
+	flake8 .
 
 mypy:
 	mypy .
