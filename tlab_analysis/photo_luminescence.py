@@ -387,16 +387,15 @@ class WavelengthResolved(t.Generic[DT]):
         if fitting_range is None:
             fitting_range = self._determine_fitting_range()
         df = self.df
-        index = df.index[df["time"].between(*fitting_range)]
-        max_intensity = df["intensity"].max()
+        index = df["time"].between(*fitting_range)
         params, cov = optimize.curve_fit(
             f=func,
             xdata=df["time"][index],
-            ydata=df["intensity"][index] / max_intensity,
+            ydata=df["intensity"][index],
             **kwargs
         )
         df["fit"] = np.nan
-        df.loc[index, "fit"] = func(df["time"][index], *params) * max_intensity
+        df.loc[index, "fit"] = func(df["time"][index], *params)
         return params, cov
 
     def _determine_fitting_range(self) -> tuple[float, float]:  # pragma: no cover
